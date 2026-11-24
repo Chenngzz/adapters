@@ -1,0 +1,44 @@
+[
+  {
+    "adapter_name": "sweeper-bench",
+    "adapter_builders": [
+      "Chengzhi Liu (chengzhi@ucsb.edu)"
+    ],
+    "original_benchmark": [
+      {
+        "split": "full",
+        "size": 200,
+        "harness": "agent",
+        "supported_agents": [
+          "codex",
+          "claude-code",
+          "cursor",
+          "kimi-code",
+          "gemini-cli",
+          "deepseek-harness",
+          "muse-code"
+        ],
+        "adaptable": true,
+        "notes": "200 interactive web-app bug-discovery tasks; agentic browser verifier (Codex + gpt-5.6-luna by default) runs one target and one preservation workflow per task. Runner 96f86f2, dataset revision f10cd68."
+      }
+    ],
+    "harbor_adapter": [
+      {
+        "split": "full",
+        "adapted_benchmark_size": 200,
+        "parity_benchmark_size": 0,
+        "parity_sampling_rate": 0.0,
+        "registry_benchmark_size": 0,
+        "added_agents": [
+          "None"
+        ],
+        "parity_matching_agents": [],
+        "parity_unmatching_agents": [
+          "None"
+        ],
+        "parity_costs": null,
+        "notes": "WIP: three-task pilot (sweeper-001, sweeper-073, sweeper-102) verified with oracle and NOP against the upstream baseline/reference phases. Parity cohort, agent/model and budget pending maintainer agreement."
+      }
+    ]
+  }
+]

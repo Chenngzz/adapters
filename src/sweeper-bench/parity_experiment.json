@@ -1,0 +1,26 @@
+[
+  {
+    "adapter_name": "sweeper-bench",
+    "agent": "<agent>@<version>",
+    "model": "<model>",
+    "date": "YYYY-MM-DD",
+    "adapted_benchmark_size": 200,
+    "parity_benchmark_size": null,
+    "number_of_runs": null,
+    "notes": "Parity not yet run. Proposed: Scenario 1 (upstream supports codex and claude-code), 10-20 tasks stratified by language exposed as --split parity, three runs per side, identical verifier on both sides (Codex + gpt-5.6-luna, effort xhigh); original side on Modal with the upstream runner at 96f86f2.",
+    "original_parity_repo": "https://github.com/zlab-princeton/sweeper-bench",
+    "adapter_pr": [],
+    "dataset_pr": [],
+    "parity_pr": [],
+    "metrics": [
+      {
+        "benchmark_name": "SWEeper-Bench",
+        "metric": "solved_rate",
+        "original": "<mean +/- sample_SEM>",
+        "harbor": "<mean +/- sample_SEM>",
+        "original_runs": [],
+        "harbor_runs": []
+      }
+    ]
+  }
+]
