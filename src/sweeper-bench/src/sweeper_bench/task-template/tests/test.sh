@@ -74,7 +74,9 @@ rpc() {  # rpc <timeout_sec> <env_file|-> <argv...>
 
 # ---------------------------------------------------------------- product
 APP_PGID=""
+PRE_PIDS=""
 start_product() {
+  PRE_PIDS="$(ps -eo pid= | tr -s ' \n' ' ')"
   setsid bash -lc "cd $PRODUCT && HOST=0.0.0.0 PORT=3000 BROWSER=none product-yarn start >/tmp/product-dev-server.log 2>&1" \
     </dev/null >/dev/null 2>&1 &
   APP_PGID=$!
@@ -88,18 +90,14 @@ stop_product() {
     sleep 3
     kill -KILL -- "-$APP_PGID" 2>/dev/null || true
   fi
-  local keep=" 1 " p=$$
-  while [ -n "$p" ] && [ "$p" -gt 1 ]; do
-    keep="$keep$p "
-    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
-  done
-  local pids
-  pids="$(ps -eo pid=)"
-  for pid in $pids; do
-    case "$keep" in *" $pid "*) continue ;; esac
-    [ "$pid" = "$BASHPID" ] && continue
+  # Only processes created after start_product() are candidates; Harbor's own
+  # exec processes (and the pipe reading this script's output) predate it.
+  local pid ppid
+  while read -r pid ppid; do
+    case " $PRE_PIDS " in *" $pid "*) continue ;; esac
+    [ "$pid" = "$$" ] || [ "$pid" = "$BASHPID" ] || [ "$ppid" = "$$" ] && continue
     kill -KILL "$pid" 2>/dev/null || true
-  done
+  done < <(ps -eo pid=,ppid=)
   APP_PGID=""
   sleep 1
 }
