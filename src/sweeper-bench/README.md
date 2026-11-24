@@ -1,8 +1,8 @@
 # SWEeper-Bench → Harbor Adapter
 
 > **Status: work in progress (three-task pilot).** The adapter code generates all
-> 200 tasks, but only the three pilot tasks below have been verified with the
-> oracle and NOP agents. Final coverage, the parity subset and the parity budget
+> 200 tasks; the three pilot tasks below pass the oracle (3/3) and fail the NOP
+> agent (0/3), matching the upstream reference and baseline phases. Final coverage, the parity subset and the parity budget
 > are open questions for the Harbor-Index v2.0 maintainers.
 
 ## Overview
@@ -183,7 +183,15 @@ subscription login):
 - **Harbor NOP**: `-a nop` with `SWEEPER_EVALUATE_EMPTY_PATCH=1`.
 - **Harbor Oracle**: `-a oracle`.
 
-PILOT_TABLE_PLACEHOLDER
+| Case | App / why chosen | Upstream baseline (target / preservation) | Upstream reference | Harbor NOP | Harbor Oracle |
+|---|---|---|---|---|---|
+| `sweeper-001` | AbanteCart (PHP): PHP + MariaDB storefront; target workflow uploads a file | fail / pass → not solved | pass / pass → solved | fail / pass → reward 0 | pass / pass → reward 1 |
+| `sweeper-073` | Gotify (Go + React): Go server with a React UI and an OIDC (Dex) sidecar process | fail / pass → not solved | pass / pass → solved | fail / pass → reward 0 | pass / pass → reward 1 |
+| `sweeper-102` | linkding (Python/Django): Django; bookmark import with URL normalisation | fail / pass → not solved | pass / pass → solved | fail / pass → reward 0 | pass / pass → reward 1 |
+
+Totals: Harbor Oracle 3/3 (reward 1.0, 0 exceptions); Harbor NOP 0/3 solved (reward 0.0, 0 exceptions); upstream reference 3/3 solved; upstream baseline 0/3 solved. Every verdict was reached on the first phase attempt (no `uncertain`, no infrastructure retries). Runs on 2026-11-24 on one amd64 host (a3u-0), Harbor 0.27.0 Docker environment. Wall clock: upstream 284–748 s per case (both phases); Harbor 17–18 min per job of three trials including image builds.
+
+Image digests (tag `alpha`, pulled 2026-11-24): `sweeper-001` `7830f447…`, `sweeper-001-prediction` `6e6cc2c5…`, `sweeper-073` `d3f84e67…`, `sweeper-073-prediction` `a9e0c84b…`, `sweeper-102` `c617aa40…`, `sweeper-102-prediction` `570bf458…`, `evaluation-codex` `bf80bf95…`.
 
 Original side: the unmodified upstream `install.sh` + `worker.py` (runner
 `96f86f2`) in the upstream VM image, run with
