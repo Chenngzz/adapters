@@ -229,7 +229,7 @@ harbor run -p /tmp/sweeper -a nop -y --ve SWEEPER_EVALUATE_EMPTY_PATCH=1
 | TBD | TBD | solved rate | TBD | TBD | TBD | TBD |
 
 Links: [original benchmark](https://github.com/zlab-princeton/sweeper-bench) ·
-adapter PR: TBD · dataset PR: TBD · parity PR: TBD.
+[adapter PR #39](https://github.com/harbor-index/adapters/pull/39) · dataset PR: TBD · parity PR: TBD.
 
 ## Notes & Caveats
 
