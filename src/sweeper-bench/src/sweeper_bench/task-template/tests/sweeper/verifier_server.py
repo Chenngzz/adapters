@@ -133,11 +133,18 @@ def serve() -> None:
 # --------------------------------------------------------------------------
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Report a 3xx as-is, like `curl -w %{http_code}` without -L in product.sh."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def wait_ready(timeout: int = 600, probe_timeout: int = 45) -> int:
     url = f"http://127.0.0.1:{PUBLISH_PORT}"
     deadline = time.monotonic() + timeout
     print(f"waiting for {url} (max {timeout}s)", flush=True)
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
     while time.monotonic() < deadline:
         status = 0
         try:
