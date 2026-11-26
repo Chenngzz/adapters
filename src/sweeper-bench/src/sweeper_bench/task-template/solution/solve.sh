@@ -14,6 +14,10 @@ if ! git diff --quiet; then
   git diff > /tmp/product-startup-edits.diff
   git checkout -q -- .
 fi
+# Files the product start script created (e.g. generated settings) are not part
+# of the reference fix; remove them so the collected patch equals the upstream
+# reference patch. Ignored files (dependencies, build output) stay.
+git clean -q -fd
 patch=/solution/reference.patch
 if ! git apply "$patch"; then
   echo "git apply failed; retry excluding images" >&2
