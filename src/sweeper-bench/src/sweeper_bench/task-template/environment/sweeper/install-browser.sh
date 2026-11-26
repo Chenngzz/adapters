@@ -25,7 +25,10 @@ if ! playwright install --with-deps chromium; then
              libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
              libcairo2 libasound2 libatspi2.0-0 libx11-6 libx11-xcb1 libxcb1 libxext6 libxshmfence1 \
              libglib2.0-0 libexpat1 libfontconfig1 libfreetype6 fonts-liberation fonts-noto-color-emoji; do
-    apt-get install -y --no-install-recommends "$pkg" >/dev/null 2>&1 || echo "skip $pkg" >&2
+    # Newer Debian/Ubuntu renamed several of these with a t64 suffix (64-bit time_t).
+    apt-get install -y --no-install-recommends "$pkg" >/dev/null 2>&1 \
+      || apt-get install -y --no-install-recommends "${pkg}t64" >/dev/null 2>&1 \
+      || echo "skip $pkg" >&2
   done
 fi
 
