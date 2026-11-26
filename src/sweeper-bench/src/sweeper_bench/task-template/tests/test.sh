@@ -76,6 +76,8 @@ rpc() {  # rpc <timeout_sec> <env_file|-> <argv...>
 APP_PGID=""
 PRE_PIDS=""
 start_product() {
+  # Same as a fresh upstream product container: run the image entrypoint setup.
+  bash /opt/sweeper/image-setup.sh >>/tmp/product-dev-server.log 2>&1 || true
   PRE_PIDS="$(ps -eo pid= | tr -s ' \n' ' ')"
   setsid bash -lc "cd $PRODUCT && HOST=0.0.0.0 PORT=3000 BROWSER=none product-yarn start >/tmp/product-dev-server.log 2>&1" \
     </dev/null >/dev/null 2>&1 &

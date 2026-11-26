@@ -81,7 +81,13 @@ def main() -> None:
         return {t: (1.0 if (run.get(t) or {}).get("solved") is True else 0.0) for t in ids}
 
     def score_harb(run):
-        return {t: (1.0 if (run.get(t) or {}).get("reward") == 1 else 0.0) for t in ids}
+        # Upstream writes no patch when the agent exits non-zero (run.sh) and the
+        # case is not evaluated; count such Harbor trials as unsolved as well.
+        def solved(item):
+            if item.get("exception") == "NonZeroAgentExitCodeError":
+                return 0.0
+            return 1.0 if item.get("reward") == 1 else 0.0
+        return {t: solved(run.get(t) or {}) for t in ids}
 
     o_scores = [score_orig(r) for r in orig]
     h_scores = [score_harb(r) for r in harb]

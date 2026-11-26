@@ -15,8 +15,8 @@ RUN missing=""; \
       && rm -rf /var/lib/apt/lists/*; \
     fi
 
-COPY sweeper/checkout.sh /opt/sweeper/checkout.sh
-RUN chmod 0755 /opt/sweeper/checkout.sh \
+COPY sweeper/checkout.sh sweeper/image-setup.sh /opt/sweeper/
+RUN chmod 0755 /opt/sweeper/checkout.sh /opt/sweeper/image-setup.sh \
     && /opt/sweeper/checkout.sh "{repo}" "{base_commit}" /workspace/product
 
 COPY test.sh /tests/test.sh
