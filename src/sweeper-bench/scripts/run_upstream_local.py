@@ -59,6 +59,10 @@ def sh(args, **kw):
 
 
 def build_vm_image(runner: Path, tag: str) -> None:
+    # The tag carries the runner commit, so an existing image already matches.
+    if subprocess.run(["docker", "image", "inspect", tag], capture_output=True).returncode == 0:
+        print(f"VM image {tag} already present", flush=True)
+        return
     with tempfile.TemporaryDirectory() as tmp:
         ctx = Path(tmp)
         (ctx / "Dockerfile").write_text(VM_DOCKERFILE)
@@ -134,7 +138,7 @@ def run_vm(stage: str, row: dict, args, vm_tag: str, dest: Path, phases: list[st
     """One fresh VM: boot, write /task.json and /incoming, run worker.py, collect /artifacts.tgz."""
     cid = row["case_id"]
     dest.mkdir(parents=True, exist_ok=True)
-    name = f"sweeper-upstream-{stage[:4]}-{cid}-{os.getpid()}"
+    name = f"sweeper-upstream-{stage[:4]}-{cid}-{args.run_tag}-{os.getpid()}"
     env = vm_env(args)
     envfile = dest / ".vm.env"
     envfile.touch(mode=0o600)
@@ -149,7 +153,8 @@ def run_vm(stage: str, row: dict, args, vm_tag: str, dest: Path, phases: list[st
                 "--cpus", str(args.cpus), "--memory", f"{args.memory_mb}m",
                 "--env-file", str(envfile),
                 # Image cache only; the VM's containers and /work start empty.
-                "-v", f"sweeper-upstream-docker-{cid}-{stage}:/var/lib/docker",
+                "-v", f"sweeper-upstream-docker-{cid}-{stage}-{args.run_tag}:/var/lib/docker",
+                "-v", f"sweeper-upstream-ctd-{cid}-{stage}-{args.run_tag}:/var/lib/containerd",
                 vm_tag, "sleep", "infinity",
             ],
             check=True,
@@ -259,6 +264,7 @@ def main() -> None:
     p.add_argument("--eval-timeout", type=int, default=10800)
     p.add_argument("--concurrency", type=int, default=1)
     p.add_argument("--keep-vm", action="store_true")
+    p.add_argument("--run-tag", default="r0", help="keeps VM volumes of concurrent runs apart")
     args = p.parse_args()
 
     rows = {json.loads(l)["case_id"]: json.loads(l) for l in args.dataset_file.read_text().splitlines() if l.strip()}
