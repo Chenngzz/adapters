@@ -1,15 +1,17 @@
 [
   {
     "adapter_name": "sweeper-bench",
-    "agent": "<agent>@<version>",
-    "model": "<model>",
+    "agent": "codex@0.154.0",
+    "model": "deepseek-v4.1-flash",
     "date": "YYYY-MM-DD",
-    "adapted_benchmark_size": 200,
-    "parity_benchmark_size": null,
-    "number_of_runs": null,
-    "notes": "Parity not yet run. Proposed: Scenario 1 (upstream supports codex and claude-code), 10-20 tasks stratified by language exposed as --split parity, three runs per side, identical verifier on both sides (Codex + gpt-5.6-luna, effort xhigh); original side on Modal with the upstream runner at 96f86f2.",
-    "original_parity_repo": "https://github.com/zlab-princeton/sweeper-bench",
-    "adapter_pr": ["https://github.com/harbor-index/adapters/pull/39"],
+    "adapted_benchmark_size": 198,
+    "parity_benchmark_size": 20,
+    "number_of_runs": 3,
+    "notes": "In progress. Codex 0.154.0 + deepseek-v4.1-flash via the 2077AI endpoint on both sides, upstream scoped+browser prompt, unlimited time budget; verifier Codex + gpt-5.6-luna (xhigh) on both sides; original side = upstream runner fork (adds OPENAI_BASE_URL only) run with scripts/run_upstream_local.py.",
+    "original_parity_repo": "https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity",
+    "adapter_pr": [
+      "https://github.com/harbor-index/adapters/pull/39"
+    ],
     "dataset_pr": [],
     "parity_pr": [],
     "metrics": [

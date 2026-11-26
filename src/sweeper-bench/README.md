@@ -1,9 +1,9 @@
 # SWEeper-Bench → Harbor Adapter
 
-> **Status: work in progress (three-task pilot).** The adapter code generates all
-> 200 tasks; the three pilot tasks below pass the oracle (3/3) and fail the NOP
-> agent (0/3), matching the upstream reference and baseline phases. Final coverage, the parity subset and the parity budget
-> are open questions for the Harbor-Index v2.0 maintainers.
+> **Status: work in progress.** Oracle: 198/198 adapted tasks reach reward 1.0
+> (two upstream tasks excluded, see below). The three-task pilot also checked
+> NOP against the upstream `baseline` phase (0/3 on both sides). Parity runs
+> (20-task cohort, three runs per side) are in progress.
 
 ## Overview
 
@@ -17,8 +17,12 @@ AbanteCart's storefront account profile editor."* An agentic browser verifier
 then applies the agent's patch to a fresh copy of the app and runs two hidden
 behaviour tests.
 
-- **Size:** 200 tasks (`data/test.jsonl`, one split). The adapter converts every
-  case one-to-one; task names are `zlab-princeton/sweeper-bench__<case_id>`.
+- **Size:** 200 upstream tasks (`data/test.jsonl`, one split); the adapter
+  produces **198** by default. `sweeper-045` and `sweeper-150` are excluded
+  because the upstream reference fix fails their target workflow on the original
+  runner as well (checked with the upstream `reference` phase); they can still
+  be generated with `--task-ids`. Task names are
+  `zlab-princeton/sweeper-bench__<case_id>`.
 - **Pilot:** `sweeper-001`, `sweeper-073`, `sweeper-102` (`--split pilot`).
 - **Provenance:** [paper](https://arxiv.org/abs/2610.14096) ·
   [runner](https://github.com/zlab-princeton/sweeper-bench) (MIT) ·
@@ -169,8 +173,23 @@ not need Docker.
 
 ## Comparison with Original Benchmark (Parity)
 
-Parity has not been run yet. This section reports the pilot that checks the
-adaptation, and the proposed parity plan.
+Parity runs are in progress. This section reports the full oracle run, the
+pilot that compared Harbor with the upstream runner phase by phase, and the
+parity plan.
+
+### Oracle: all tasks
+
+Adapter commit `7074d37`, Harbor 0.27.0, verifier Codex + `gpt-5.6-luna`
+(`xhigh`) through the parity API endpoint, Docker environment:
+
+| Tasks | Reward 1.0 | Notes |
+|---|---|---|
+| 198 adapted | **198 / 198 (100%)** | `sweeper-002` and `sweeper-109` re-run once after the product hit the shared host's inotify limit (`EMFILE`); `sweeper-172` re-run once after a verifier `fail` (it passes in every other run); 7 tasks re-launched because Harbor's startup probe timed out before their trials began |
+| 2 excluded | 0 / 2 | `sweeper-045`, `sweeper-150`: the upstream runner's own `reference` phase also fails the target workflow |
+
+The verifier is an LLM agent, so a correct patch can occasionally be judged
+`fail`; across the development runs the oracle failed this way on a handful of
+tasks that passed on every other run.
 
 ### Pilot: same verifier, both sides
 
@@ -271,9 +290,36 @@ Links: [original benchmark](https://github.com/zlab-princeton/sweeper-bench) ·
   supports; Harbor adds the configured inference endpoint. The verifier needs
   internet access to its model API (upstream does not firewall evaluation
   either).
-- **Images and platforms.** All upstream images are `linux/amd64`, Debian-based.
-  The agent Dockerfile installs packages with `apt-get`; images for all 200
-  cases still have to be checked.
+- **Images and platforms.** All upstream images are `linux/amd64` and
+  Debian/Ubuntu based (Debian 10 to Ubuntu 26.04). The agent Dockerfile installs
+  the Playwright 1.63.0 CLI with `--with-deps` where Playwright supports the
+  distro; elsewhere it installs the Chromium runtime libraries one by one
+  (including `t64` package names), uses the Ubuntu 22.04 Chromium build when
+  Playwright refuses the distro, and fails the build unless Chromium launches.
+- **Image entrypoints.** Upstream starts every product container with the
+  image's `product-container-entrypoint`; some images use it to link prebuilt
+  `node_modules` or copy `dist` into the checkout. Both Harbor containers run
+  that setup (without its final `exec sleep infinity`) before starting the
+  product, and the verifier repeats it for each phase attempt.
+- **Product start scripts that block GitHub.** Some `product-yarn start`
+  scripts map GitHub and similar hosts to `0.0.0.0` in `/etc/hosts`. Upstream's
+  agent lives in another container and never sees that file. Here the agent
+  entrypoint removes only the tooling hosts (GitHub, nodejs.org, npm, PyPI) once
+  the product is up, so Harbor can install the agent; during the agent phase the
+  Harbor allowlist blocks them anyway, as upstream's egress proxy does.
+- **Oracle and product side effects.** Upstream applies the reference patch to
+  the clean base before starting the product. Here the product is already
+  running when the oracle runs, so `solve.sh` first undoes tracked edits and
+  removes untracked files that the start script created (ignored files such as
+  dependencies stay), then applies the patch. Agents see the started tree, as
+  upstream agents do.
+- **Reference patch bytes.** Patches are kept as raw bytes end to end; several
+  repositories commit CRLF files.
+- **Readiness probe.** Like upstream's `curl` probe, any non-5xx answer
+  (including a redirect, without following it) counts as ready.
+- **Shared-host limits.** Many concurrent trials on one host share the kernel's
+  inotify limits; apps with file watchers can then fail with `EMFILE`. Upstream
+  runs each case on its own VM. Lower concurrency avoids it.
 - **Licenses.** Runner code (MIT) is vendored under `tests/runtime/` with its
   license. Task text and workflows are CC BY 4.0 (SWEeper-Bench authors). App
   code is cloned from each app's public repository at build time and keeps its

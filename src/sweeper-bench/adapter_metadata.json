@@ -19,16 +19,16 @@
           "muse-code"
         ],
         "adaptable": true,
-        "notes": "200 interactive web-app bug-discovery tasks; agentic browser verifier (Codex + gpt-5.6-luna by default) runs one target and one preservation workflow per task. Runner 96f86f2, dataset revision f10cd68."
+        "notes": "200 interactive web-app bug-discovery tasks; agentic browser verifier (Codex + gpt-5.6-luna by default) runs one target and one preservation workflow per task. Runner 96f86f2, dataset revision f10cd68. Two tasks (sweeper-045, sweeper-150) have reference fixes that fail upstream's own reference phase."
       }
     ],
     "harbor_adapter": [
       {
         "split": "full",
-        "adapted_benchmark_size": 200,
-        "parity_benchmark_size": 0,
-        "parity_sampling_rate": 0.0,
-        "registry_benchmark_size": 0,
+        "adapted_benchmark_size": 198,
+        "parity_benchmark_size": 20,
+        "parity_sampling_rate": 0.101,
+        "registry_benchmark_size": 198,
         "added_agents": [
           "None"
         ],
@@ -37,7 +37,7 @@
           "None"
         ],
         "parity_costs": null,
-        "notes": "WIP: three-task pilot (sweeper-001, sweeper-073, sweeper-102) verified with oracle and NOP against the upstream baseline/reference phases. Parity cohort, agent/model and budget pending maintainer agreement."
+        "notes": "198 of 200 tasks adapted; sweeper-045 and sweeper-150 excluded because the upstream reference fix fails their target workflow on the original runner too. Oracle 198/198 at adapter commit 7074d37. Parity: Codex 0.154.0 + deepseek-v4.1-flash on a fixed 20-task cohort (10%, stratified by language), three runs per side, identical verifier (Codex + gpt-5.6-luna, xhigh); in progress."
       }
     ]
   }

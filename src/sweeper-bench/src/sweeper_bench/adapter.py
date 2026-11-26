@@ -70,6 +70,15 @@ PARITY_TASK_IDS = [
 ]
 SPLITS = {"pilot": PILOT_TASK_IDS, "parity": PARITY_TASK_IDS}
 
+# Upstream reference fixes that the upstream runner's own `reference` phase does
+# not verify (target workflow fails on the original benchmark as well). Left out
+# of the default dataset; they can still be generated explicitly with --task-ids
+# or as part of --split parity (the parity cohort was fixed before this check).
+EXCLUDED_TASKS = {
+    "sweeper-045": "upstream reference fix fails the target workflow on the original runner",
+    "sweeper-150": "upstream reference fix fails the target workflow on the original runner",
+}
+
 REQUIRED_FIELDS = {
     "case_id",
     "slug",
@@ -239,6 +248,8 @@ class SWEeperBenchAdapter:
             if unknown:
                 raise SystemExit(f"unknown task ids: {', '.join(unknown)}")
             cases = [by_id[t] for t in wanted]
+        else:
+            cases = [c for c in cases if c.case_id not in EXCLUDED_TASKS]
         cases = sorted(cases, key=lambda c: c.case_id)
         if self.limit is not None:
             cases = cases[: self.limit]
