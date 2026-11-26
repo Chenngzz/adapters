@@ -13,7 +13,13 @@ npm install -g --no-audit --no-fund "playwright@$1"
 
 if ! playwright install --with-deps chromium; then
   echo "playwright --with-deps failed on this base; installing runtime libraries individually" >&2
-  playwright install chromium
+  if ! playwright install chromium; then
+    # Playwright refuses distros it does not list (e.g. "does not support
+    # chromium on debian11-x64"). The Linux x64 Chromium build is the same
+    # binary; download the Ubuntu 22.04 one and let the smoke test decide.
+    echo "retrying with PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu22.04-x64" >&2
+    PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu22.04-x64 playwright install chromium
+  fi
   apt-get update
   for pkg in libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libdbus-1-3 \
              libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
