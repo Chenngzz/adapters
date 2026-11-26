@@ -26,18 +26,20 @@
       {
         "split": "full",
         "adapted_benchmark_size": 198,
-        "parity_benchmark_size": 20,
-        "parity_sampling_rate": 0.101,
+        "parity_benchmark_size": 10,
+        "parity_sampling_rate": 0.051,
         "registry_benchmark_size": 198,
         "added_agents": [
           "None"
         ],
-        "parity_matching_agents": [],
+        "parity_matching_agents": [
+          "gemini-cli@0.60.0+gemini-3.8-flash"
+        ],
         "parity_unmatching_agents": [
           "None"
         ],
         "parity_costs": null,
-        "notes": "198 of 200 tasks adapted; sweeper-045 and sweeper-150 excluded because the upstream reference fix fails their target workflow on the original runner too. Oracle 198/198 at adapter commit 7074d37. Parity: Codex 0.154.0 + deepseek-v4.1-flash on a fixed 20-task cohort (10%, stratified by language), three runs per side, identical verifier (Codex + gpt-5.6-luna, xhigh); in progress."
+        "notes": "198 of 200 tasks adapted; sweeper-045 and sweeper-150 excluded because the upstream reference fix fails their target workflow on the original runner too. Oracle 198/198 at adapter commit 7074d37. Parity: Gemini CLI 0.60.0 + gemini-3.8-flash (Vertex AI) on a fixed 10-task cohort, three runs per side, identical verifier (Codex + gpt-5.6-luna, xhigh): original 20.00 +/- 5.77, Harbor 23.33 +/- 6.67 solved rate."
       }
     ]
   }

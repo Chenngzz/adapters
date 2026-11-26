@@ -15,19 +15,26 @@ Modes:
                     (used by the pilot's original-side checks)
   --mode run        prediction stage (agent writes a patch), then evaluation of
                     that patch (phase prediction-scoped); used for parity
+  --mode predict    prediction stage only (the patch is kept under --out)
+  --mode score      evaluation of patches saved by an earlier --mode predict
 
 Examples:
     # pilot: unpatched app and upstream fix
     python scripts/run_upstream_local.py --runner ~/sweeper-bench --dataset-file test.jsonl \
         --cases sweeper-001 --mode evaluate --phases baseline reference \
         --reference-patch-dir patches/ --out runs/pilot
-    # parity: Codex + a model behind an OpenAI-compatible endpoint
-    OPENAI_BASE_URL=https://app.ppapi.ai/v1 python scripts/run_upstream_local.py \
+    # parity: Gemini CLI on Vertex AI (fork at harbor-parity), Codex verifier on a subscription
+    GOOGLE_CLOUD_PROJECT=<project> GOOGLE_CLOUD_LOCATION=global GEMINI_VERTEX_ADC_FILE=<adc.json> \
+    CODEX_AUTH_FILE=~/.codex/auth.json python scripts/run_upstream_local.py \
         --runner <fork checkout at harbor-parity> --dataset-file test.jsonl \
-        --cases sweeper-001 --mode run --pred-model deepseek-v4.1-flash --out runs/parity-r1
+        --cases sweeper-001 --mode run --auth subscription --pred-harness gemini-cli \
+        --pred-provider vertex --pred-model gemini-3.8-flash --pred-effort high --out runs/parity-r1
 Credentials come from the environment, as in the upstream CLI: GHCR_TOKEN,
-GHCR_USER, and either OPENAI_API_KEY (+ optional OPENAI_BASE_URL; --auth api)
-or CODEX_AUTH_FILE pointing at a Codex auth.json (--auth subscription).
+GHCR_USER; for the verifier either OPENAI_API_KEY (+ optional OPENAI_BASE_URL;
+--auth api) or CODEX_AUTH_FILE pointing at a Codex auth.json (--auth
+subscription); for the agent GEMINI_API_KEY (or --gemini-key-file to spread
+cases over several keys), or GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION and
+GEMINI_VERTEX_ADC_FILE for --pred-provider vertex.
 """
 
 from __future__ import annotations
@@ -93,7 +100,7 @@ def payload(stage: str, row: dict, args, phases: list[str]) -> dict:
         "row": prow,
         "prediction": {
             "harness": args.pred_harness,
-            "provider": "openai",
+            "provider": args.pred_provider,
             "model": args.pred_model,
             "effort": args.pred_effort,
             "level": "scoped",
@@ -128,10 +135,25 @@ def vm_env(args) -> dict[str, str]:
     if args.auth == "subscription":
         env["CODEX_AUTH_JSON"] = Path(os.environ["CODEX_AUTH_FILE"]).expanduser().read_text()
     else:
-        env["OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
-        if os.environ.get("OPENAI_BASE_URL"):
-            env["OPENAI_BASE_URL"] = os.environ["OPENAI_BASE_URL"]
+        for name in ("OPENAI_API_KEY", "OPENAI_BASE_URL"):
+            if os.environ.get(name):
+                env[name] = os.environ[name]
+    # Prediction credentials present on the host are forwarded (upstream host_credentials()).
+    for name in ("GEMINI_API_KEY", "GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION"):
+        if os.environ.get(name):
+            env[name] = os.environ[name]
+    if os.environ.get("GEMINI_VERTEX_ADC_FILE"):  # provider=vertex (parity fork)
+        adc = json.loads(Path(os.environ["GEMINI_VERTEX_ADC_FILE"]).expanduser().read_text())
+        env["GEMINI_VERTEX_ADC_JSON"] = json.dumps(adc, separators=(",", ":"))
     return env
+
+
+def case_key(args, cid: str) -> str | None:
+    """Optional per-case GEMINI_API_KEY from --gemini-key-file (one key per line, index = case order + offset)."""
+    if not args.gemini_key_file:
+        return None
+    keys = [k.strip() for k in Path(args.gemini_key_file).read_text().splitlines() if k.strip()]
+    return keys[(args.gemini_key_offset + args.cases.index(cid)) % len(keys)]
 
 
 def run_vm(stage: str, row: dict, args, vm_tag: str, dest: Path, phases: list[str], incoming: dict[str, Path], timeout: int) -> int:
@@ -140,6 +162,9 @@ def run_vm(stage: str, row: dict, args, vm_tag: str, dest: Path, phases: list[st
     dest.mkdir(parents=True, exist_ok=True)
     name = f"sweeper-upstream-{stage[:4]}-{cid}-{args.run_tag}-{os.getpid()}"
     env = vm_env(args)
+    key = case_key(args, cid)
+    if key:
+        env["GEMINI_API_KEY"] = key
     envfile = dest / ".vm.env"
     envfile.touch(mode=0o600)
     envfile.write_text("".join(f"{k}={v}\n" for k, v in env.items() if "\n" not in v))
@@ -220,9 +245,20 @@ def run_case(row: dict, args, vm_tag: str) -> dict:
             status[phase] = cells(root, phase)
     else:
         pred_dir, eval_dir = root / "prediction", root / "evaluation"
-        status["prediction_exit"] = run_vm("prediction", row, args, vm_tag, pred_dir, [], {}, args.pred_timeout)
+        if args.mode == "score":
+            # Score a patch saved by an earlier --mode predict run.
+            prev = json.loads((root / "status.json").read_text()) if (root / "status.json").is_file() else {}
+            status.update({k: prev[k] for k in ("prediction_exit", "prediction_seconds") if k in prev})
+        else:
+            status["prediction_exit"] = run_vm("prediction", row, args, vm_tag, pred_dir, [], {}, args.pred_timeout)
+            status["prediction_seconds"] = round(time.time() - started)
         patch = pred_dir / "artifacts" / "prediction-scoped.patch"
-        if patch.is_file() and "diff --git " in patch.read_text(errors="replace"):
+        if args.mode == "predict":
+            ok = patch.is_file() and "diff --git " in patch.read_text(errors="replace")
+            status["patch"] = "ok" if ok else "missing_or_empty"
+            if not ok:
+                status["solved"] = False
+        elif patch.is_file() and "diff --git " in patch.read_text(errors="replace"):
             status["patch"] = "ok"
             status["evaluation_exit"] = run_vm(
                 "evaluation", row, args, vm_tag, eval_dir, ["prediction-scoped"],
@@ -247,12 +283,16 @@ def main() -> None:
     p.add_argument("--runner", type=Path, required=True, help="checkout of the upstream runner (or the parity fork)")
     p.add_argument("--dataset-file", type=Path, required=True)
     p.add_argument("--cases", nargs="+", required=True)
-    p.add_argument("--mode", choices=["evaluate", "run"], default="evaluate")
+    p.add_argument("--mode", choices=["evaluate", "run", "predict", "score"], default="evaluate",
+                   help="run = predict + score; predict = agent only (patch saved); score = verify saved patches")
     p.add_argument("--phases", nargs="+", default=["baseline", "reference"], help="--mode evaluate only")
     p.add_argument("--reference-patch-dir", type=Path)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--auth", choices=["api", "subscription"], default="api")
     p.add_argument("--pred-harness", default="codex")
+    p.add_argument("--pred-provider", default="openai")
+    p.add_argument("--gemini-key-file", default=None, help="spread GEMINI_API_KEY over cases (one key per line)")
+    p.add_argument("--gemini-key-offset", type=int, default=0)
     p.add_argument("--pred-model", default="gpt-6-astra")
     p.add_argument("--pred-effort", default="xhigh")
     p.add_argument("--eval-harness", default="codex")
@@ -276,7 +316,7 @@ def main() -> None:
         results = list(pool.map(lambda c: run_case(rows[c], args, vm_tag), args.cases))
     Path(args.out).mkdir(parents=True, exist_ok=True)
     summary = {"runner_commit": commit, "mode": args.mode, "results": results}
-    if args.mode == "run":
+    if args.mode in ("run", "score"):
         done = [r for r in results if r.get("solved") is not None]
         summary["solved"] = sum(1 for r in done if r["solved"])
         summary["scored"] = len(done)

@@ -1,13 +1,13 @@
 [
   {
     "adapter_name": "sweeper-bench",
-    "agent": "codex@0.154.0",
-    "model": "deepseek-v4.1-flash",
-    "date": "YYYY-MM-DD",
+    "agent": "gemini-cli@0.60.0",
+    "model": "gemini-3.8-flash",
+    "date": "2026-11-26",
     "adapted_benchmark_size": 198,
-    "parity_benchmark_size": 20,
+    "parity_benchmark_size": 10,
     "number_of_runs": 3,
-    "notes": "In progress. Codex 0.154.0 + deepseek-v4.1-flash via the 2077AI endpoint on both sides, upstream scoped+browser prompt, unlimited time budget; verifier Codex + gpt-5.6-luna (xhigh) on both sides; original side = upstream runner fork (adds OPENAI_BASE_URL only) run with scripts/run_upstream_local.py.",
+    "notes": "Gemini CLI 0.60.0 + gemini-3.8-flash (thinking HIGH) via Vertex AI on both sides; upstream scoped+browser prompt, unlimited time budget, 8 h agent timeout; verifier upstream default Codex + gpt-5.6-luna (xhigh, ChatGPT subscription) on both sides. Original side: runner fork Chenngzz/sweeper-bench@653f038 (upstream 96f86f2 + Vertex provider and workspace-trust fix for the gemini-cli harness) run with scripts/run_upstream_local.py. Cohort: --split parity (10 fixed tasks). Run ranges overlap; paired per-task MSE 0.056.",
     "original_parity_repo": "https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity",
     "adapter_pr": [
       "https://github.com/harbor-index/adapters/pull/39"
@@ -18,10 +18,18 @@
       {
         "benchmark_name": "SWEeper-Bench",
         "metric": "solved_rate",
-        "original": "<mean +/- sample_SEM>",
-        "harbor": "<mean +/- sample_SEM>",
-        "original_runs": [],
-        "harbor_runs": []
+        "original": "20.00 +/- 5.77",
+        "harbor": "23.33 +/- 6.67",
+        "original_runs": [
+          10.0,
+          20.0,
+          30.0
+        ],
+        "harbor_runs": [
+          30.0,
+          10.0,
+          30.0
+        ]
       }
     ]
   }

@@ -1,9 +1,10 @@
 # SWEeper-Bench → Harbor Adapter
 
-> **Status: work in progress.** Oracle: 198/198 adapted tasks reach reward 1.0
-> (two upstream tasks excluded, see below). The three-task pilot also checked
-> NOP against the upstream `baseline` phase (0/3 on both sides). Parity runs
-> (20-task cohort, three runs per side) are in progress.
+> **Status.** Oracle: 198/198 adapted tasks reach reward 1.0 (two upstream
+> tasks excluded, see below). NOP matches the upstream `baseline` phase on the
+> pilot (0/3 on both sides). Parity (10-task cohort, three runs per side,
+> Gemini CLI + `gemini-3.8-flash`): original 20.00 ± 5.77, Harbor 23.33 ± 6.67
+> solved rate, run ranges overlap.
 
 ## Overview
 
@@ -173,9 +174,98 @@ not need Docker.
 
 ## Comparison with Original Benchmark (Parity)
 
-Parity runs are in progress. This section reports the full oracle run, the
-pilot that compared Harbor with the upstream runner phase by phase, and the
-parity plan.
+This section reports the parity experiment, the full oracle run, and the
+pilot that compared Harbor with the upstream runner phase by phase.
+
+### Parity: Gemini CLI + gemini-3.8-flash, 10 tasks × 3 runs
+
+| Agent | Model | Metric | Runs | Dataset Size | Original (mean ± SEM) | Harbor (mean ± SEM) |
+|-------|-------|--------|------|--------------|-----------------------|---------------------|
+| gemini-cli@0.60.0 | gemini-3.8-flash (thinking `HIGH`) | solved rate (%) | 3 | 10 (5% of 198) | 20.00 ± 5.77 | 23.33 ± 6.67 |
+
+Per run: original 10 / 20 / 30, Harbor 30 / 10 / 30. The run ranges overlap;
+the mean squared difference of paired per-task solve rates is 0.056. SEM is
+the sample standard error over the three runs.
+
+| Task | Original (r1 r2 r3) | Harbor (r1 r2 r3) |
+|---|---|---|
+| `sweeper-001` | 0 0 0 | 0 0 0 |
+| `sweeper-008` | 1 1 1 | 1 1 1 |
+| `sweeper-019` | 0 0 0 | 0 0 0 |
+| `sweeper-058` | 0 0 0 | 0 0 0 |
+| `sweeper-073` | 0 0 0 | 1 0 1 |
+| `sweeper-075` | 0 0 0 | 0 0 0 |
+| `sweeper-097` | 0 0 0 | 0 0 0 |
+| `sweeper-157` | 0 0 1 | 1 0 0 |
+| `sweeper-179` | 0 1 1 | 0 0 1 |
+| `sweeper-180` | 0 0 0 | 0 0 0 |
+
+Setup, identical on both sides unless noted:
+
+- **Cohort.** `--split parity`: `sweeper-001, -008, -019, -058, -073, -075,
+  -097, -157, -179, -180` (fixed ids, mixed languages).
+- **Agent.** Gemini CLI 0.60.0 (the version in upstream's
+  `prediction-gemini-cli:alpha` image), `gemini-3.8-flash`, thinking level
+  `HIGH` (`--pred-effort high` upstream, `--ak reasoning_effort=high` in
+  Harbor), upstream `scoped` + `browser` prompt, unlimited time budget, 8 h agent
+  timeout. Model calls go to Vertex AI (`global`) on both sides.
+- **Verifier.** Upstream default: Codex from `evaluation-codex:alpha`,
+  `gpt-5.6-luna`, effort `xhigh`, ChatGPT subscription login.
+- **Original side.** Runner fork
+  [`Chenngzz/sweeper-bench@653f038`](https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity)
+  (upstream `96f86f2` plus the parity changes listed below), run with
+  `scripts/run_upstream_local.py` (privileged Docker-in-Docker per VM instead
+  of Modal; one VM per case and stage, as upstream).
+- **Harbor side.** Harbor 0.27.0, Docker environment, tasks from this adapter.
+- **When / where.** 2026-11-26, a3u amd64 hosts, all 60 trials in parallel.
+  Agent phase median 12 min (Harbor) and 15 min (original); verifier median
+  5 min. No verifier `uncertain` cells and no infrastructure retries in the
+  scored results.
+
+Parity-only changes on top of upstream (none of them changes the benchmark):
+
+- The runner fork adds `provider = "vertex"` to the Gemini CLI harness (same
+  CLI and settings, Application Default Credentials instead of an API key) and
+  allows `aiplatform.googleapis.com` / `oauth2.googleapis.com` in the
+  prediction egress allowlist. It also sets `GEMINI_CLI_TRUST_WORKSPACE=true`:
+  Gemini CLI 0.60 otherwise exits immediately in headless mode in an untrusted
+  folder, so upstream's `gemini-cli` harness cannot run at all without it
+  (Harbor's Gemini CLI agent sets the same variable).
+- Harbor side: `-m vertex_ai/gemini-3.8-flash`, the credential file mounted
+  read-only into the agent container (`--mounts`), and
+  `--allow-agent-host aiplatform.googleapis.com --allow-agent-host
+  oauth2.googleapis.com`.
+- Gemini CLI settings differ slightly between the two harnesses: upstream's
+  model alias extends `chat-base-3`; Harbor's alias sets `includeThoughts` and
+  excludes the web-search and web-fetch tools (the egress allowlist blocks
+  those hosts on both sides anyway).
+- Reruns before scoring, all for infrastructure reasons: an earlier attempt with
+  Gemini API keys was discarded entirely because the shared key quota returned
+  429 to most agents; on Harbor, three trials that failed to start (Docker ran
+  out of network address pools) were started again; on the original side, one
+  trial (r2 `sweeper-179`) whose agent blocked for over 30 minutes on a
+  foreground server command was killed and run again from scratch.
+
+```bash
+# original side (one run; parity fork checked out in upstream-runner/)
+export GHCR_TOKEN=... GHCR_USER=... CODEX_AUTH_FILE=~/.codex/auth.json
+export GOOGLE_CLOUD_PROJECT=<project> GOOGLE_CLOUD_LOCATION=global GEMINI_VERTEX_ADC_FILE=<adc.json>
+python src/sweeper-bench/scripts/run_upstream_local.py --runner upstream-runner \
+  --dataset-file test.jsonl --cases sweeper-001 sweeper-008 ... --mode run --auth subscription \
+  --pred-harness gemini-cli --pred-provider vertex --pred-model gemini-3.8-flash --pred-effort high \
+  --concurrency 10 --out runs/parity/r1
+# Harbor side (one run)
+uv run sweeper-bench --output-dir /tmp/sweeper-parity --split parity
+export SWEEPER_VERIFIER_AUTH=subscription CODEX_AUTH_JSON="$(cat ~/.codex/auth.json)"
+export GOOGLE_CLOUD_PROJECT=<project> GOOGLE_CLOUD_LOCATION=global GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/gcp-adc.json
+harbor run -p /tmp/sweeper-parity -a gemini-cli -m vertex_ai/gemini-3.8-flash \
+  --ak version=0.60.0 --ak reasoning_effort=high \
+  --mounts '[{"type":"bind","source":"<adc.json>","target":"/run/secrets/gcp-adc.json","read_only":true}]' \
+  --allow-agent-host aiplatform.googleapis.com --allow-agent-host oauth2.googleapis.com -n 10 -y
+# summary
+python src/sweeper-bench/scripts/summarize_parity.py --original runs/parity/r1 runs/parity/r2 runs/parity/r3 \
+  --harbor <run-1 job dirs> <run-2 job dirs> <run-3 job dirs> --task-ids-file parity_ids.json --out parity_summary.json
+```
 
 ### Oracle: all tasks
 
@@ -229,23 +319,6 @@ python src/sweeper-bench/scripts/run_upstream_local.py --runner <sweeper-bench c
 harbor run -p /tmp/sweeper -a oracle -y
 harbor run -p /tmp/sweeper -a nop -y --ve SWEEPER_EVALUATE_EMPTY_PATCH=1
 ```
-
-### Proposed parity plan (to be agreed with the maintainers)
-
-- Scenario 1: the upstream runner already supports Codex and Claude Code.
-- Agent/model: one of Codex or Claude Code with a dated model routed through the
-  team's API provider; identical prompt mode (scoped + browser), unlimited time
-  budget, 8 h agent timeout on both sides.
-- Verifier: identical on both sides (upstream default Codex + `gpt-5.6-luna`,
-  `xhigh`).
-- Cohort: 5–10% of the adapted tasks (10–20 tasks if all 200 are adapted),
-  stratified by language, fixed ids exposed as `--split parity`; three runs per
-  side; report mean ± sample SEM, run-range overlap and the MSE of paired
-  per-task scores.
-
-| Agent | Model | Metric | Runs | Dataset Size | Original (mean ± SEM) | Harbor (mean ± SEM) |
-|-------|-------|--------|------|--------------|-----------------------|---------------------|
-| TBD | TBD | solved rate | TBD | TBD | TBD | TBD |
 
 Links: [original benchmark](https://github.com/zlab-princeton/sweeper-bench) ·
 [adapter PR #39](https://github.com/harbor-index/adapters/pull/39) · dataset PR: TBD · parity PR: TBD.
