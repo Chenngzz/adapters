@@ -179,6 +179,7 @@ else
     log "SWEEPER_VERIFIER_AUTH=api needs OPENAI_API_KEY (or set SWEEPER_VERIFIER_AUTH=subscription + CODEX_AUTH_JSON)"
     exit 1
   fi
+  [ -n "${OPENAI_BASE_URL:-}" ] && echo "OPENAI_BASE_URL=$OPENAI_BASE_URL" >>"$envf"
   for key in OPENAI_API_KEY CODEX_API_KEY ANTHROPIC_API_KEY; do
     [ -n "${!key:-}" ] && echo "$key=${!key}" >>"$envf"
   done

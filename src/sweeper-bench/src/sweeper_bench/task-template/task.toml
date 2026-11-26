@@ -37,6 +37,7 @@ allowed_hosts = [
     "api.openai.com",
     "chatgpt.com",
     "auth.openai.com",
+    "app.ppapi.ai",
     "generativelanguage.googleapis.com",
 ]
 
@@ -72,6 +73,8 @@ SWEEPER_VERIFIER_EFFORT = "${SWEEPER_VERIFIER_EFFORT:-xhigh}"
 SWEEPER_VERIFIER_AUTH = "${SWEEPER_VERIFIER_AUTH:-api}"
 SWEEPER_EVALUATE_EMPTY_PATCH = "${SWEEPER_EVALUATE_EMPTY_PATCH:-0}"
 OPENAI_API_KEY = "${OPENAI_API_KEY:-}"
+# Optional OpenAI-compatible endpoint (same override as the parity fork).
+OPENAI_BASE_URL = "${OPENAI_BASE_URL:-}"
 CODEX_AUTH_JSON = "${CODEX_AUTH_JSON:-}"
 
 [verifier.environment]

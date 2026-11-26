@@ -33,6 +33,8 @@ HF_FILE = "data/test.jsonl"
 # Pinned inputs (see README "Notes & Caveats").
 DATASET_REVISION = "f10cd684be52322667f1373c8295624e13791b8f"
 RUNNER_COMMIT = "96f86f2bb28f0de6c302c910aabe7baf3fb90b6a"
+# Parity fork: upstream plus an optional OPENAI_BASE_URL (no prompt/scoring change).
+PARITY_FORK = "https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity"
 IMAGE_REGISTRY = "ghcr.io/evigbyen"
 IMAGE_TAG = "alpha"
 # Versions in the upstream prediction agent images (prediction-codex,
@@ -42,7 +44,31 @@ PLAYWRIGHT_VERSION = "1.63.0"
 
 # Fixed task ids used for the three-task pilot and the default parity split.
 PILOT_TASK_IDS = ["sweeper-001", "sweeper-073", "sweeper-102"]
-SPLITS = {"pilot": PILOT_TASK_IDS}
+# 10% stratified parity subset (seed 20261126): PHP 12, Go 3, TS/JS 3, Python 2;
+# includes the three pilot tasks.
+PARITY_TASK_IDS = [
+    "sweeper-001",
+    "sweeper-008",
+    "sweeper-019",
+    "sweeper-044",
+    "sweeper-045",
+    "sweeper-058",
+    "sweeper-062",
+    "sweeper-073",
+    "sweeper-075",
+    "sweeper-091",
+    "sweeper-097",
+    "sweeper-102",
+    "sweeper-104",
+    "sweeper-130",
+    "sweeper-132",
+    "sweeper-141",
+    "sweeper-156",
+    "sweeper-157",
+    "sweeper-179",
+    "sweeper-180",
+]
+SPLITS = {"pilot": PILOT_TASK_IDS, "parity": PARITY_TASK_IDS}
 
 REQUIRED_FIELDS = {
     "case_id",
