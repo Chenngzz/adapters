@@ -17,21 +17,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN curl -fsSL "https://nodejs.org/dist/v{node_version}/node-v{node_version}-linux-x64.tar.xz" \
-        | tar -xJ -C /opt \
-    && mv "/opt/node-v{node_version}-linux-x64" /opt/sweeper-agent-node \
-    && PATH="/opt/sweeper-agent-node/bin:$PATH" npm install -g --no-audit --no-fund "playwright@{playwright_version}" \
-    && PATH="/opt/sweeper-agent-node/bin:$PATH" playwright install --with-deps chromium \
-    && printf '%s\n' '#!/usr/bin/env bash' \
-        'exec /opt/sweeper-agent-node/bin/node /opt/sweeper-agent-node/lib/node_modules/playwright/cli.js "$@"' \
-        > /usr/local/bin/playwright \
-    && chmod 0755 /usr/local/bin/playwright \
-    && if ! command -v node >/dev/null 2>&1; then ln -s /opt/sweeper-agent-node/bin/node /usr/local/bin/node; fi \
-    && rm -rf /var/lib/apt/lists/* /root/.npm
-
 COPY sweeper/ /opt/sweeper/
 RUN chmod 0755 /opt/sweeper/*.sh \
-    && /opt/sweeper/checkout.sh "{repo}" "{base_commit}" /workspace/product \
+    && curl -fsSL "https://nodejs.org/dist/v{node_version}/node-v{node_version}-linux-x64.tar.xz" \
+        | tar -xJ -C /opt \
+    && mv "/opt/node-v{node_version}-linux-x64" /opt/sweeper-agent-node \
+    && /opt/sweeper/install-browser.sh "{playwright_version}"
+
+RUN /opt/sweeper/checkout.sh "{repo}" "{base_commit}" /workspace/product \
     && install -m 0755 /opt/sweeper/task-shell.sh /workspace/task-shell
 
 WORKDIR /workspace/product
