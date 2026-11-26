@@ -321,7 +321,7 @@ harbor run -p /tmp/sweeper -a nop -y --ve SWEEPER_EVALUATE_EMPTY_PATCH=1
 ```
 
 Links: [original benchmark](https://github.com/zlab-princeton/sweeper-bench) ·
-[adapter PR #39](https://github.com/harbor-index/adapters/pull/39) · dataset PR: TBD · parity PR: TBD.
+[adapter PR #39](https://github.com/harbor-index/adapters/pull/39) · [parity fork](https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity) · dataset PR: TBD · [parity PR (HF #317)](https://huggingface.co/datasets/harborframework/parity-experiments/discussions/317); the HF dataset is over its file limit, so the artifacts are not uploaded yet.
 
 ## Notes & Caveats
 
