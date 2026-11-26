@@ -159,11 +159,15 @@ def render_prompt(task: str, templates: str = "browser") -> str:
     return "".join(out)
 
 
-def reference_patch(case: Case, cache_dir: Path) -> str:
-    """`git diff --binary base reference`, cached per case."""
+def reference_patch(case: Case, cache_dir: Path) -> bytes:
+    """`git diff --binary base reference`, cached per case.
+
+    Kept as raw bytes end to end: some repositories commit CRLF files, and any
+    newline translation breaks the patch context.
+    """
     cached = cache_dir / f"{case.case_id}.patch"
     if cached.is_file():
-        return cached.read_text(encoding="utf-8", errors="surrogateescape")
+        return cached.read_bytes()
     cache_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"{case.case_id}-") as tmp:
         git = ["git", "-C", tmp]
@@ -182,7 +186,7 @@ def reference_patch(case: Case, cache_dir: Path) -> str:
     if b"diff --git " not in diff:
         raise RuntimeError(f"{case.case_id}: empty reference diff")
     cached.write_bytes(diff)
-    return diff.decode("utf-8", errors="surrogateescape")
+    return diff
 
 
 def _fill(text: str, values: dict[str, str]) -> str:
@@ -291,6 +295,6 @@ class SWEeperBenchAdapter:
         (dest / "instruction.md").write_text(render_prompt(case.task_scoped, "browser"))
         (dest / "tests" / "workflows.yaml").write_text(case.workflows)
         patch = reference_patch(case, self.cache_dir / "reference-patches")
-        (dest / "solution" / "reference.patch").write_text(patch, encoding="utf-8", errors="surrogateescape")
+        (dest / "solution" / "reference.patch").write_bytes(patch)
         for script in dest.rglob("*.sh"):
             script.chmod(0o755)
