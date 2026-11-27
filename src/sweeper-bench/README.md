@@ -212,8 +212,9 @@ Setup, identical on both sides unless noted:
 - **Verifier.** Upstream default: Codex from `evaluation-codex:alpha`,
   `gpt-5.6-luna`, effort `xhigh`, ChatGPT subscription login.
 - **Original side.** Runner fork
-  [`Chenngzz/sweeper-bench@653f038`](https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity)
-  (upstream `96f86f2` plus the parity changes listed below), run with
+  [`Chenngzz/sweeper-bench@0437080`](https://github.com/Chenngzz/sweeper-bench/tree/harbor-parity)
+  (upstream `96f86f2` plus the parity changes listed below; the raw logs
+  record the same tree under its earlier commit id `653f038`), run with
   `scripts/run_upstream_local.py` (privileged Docker-in-Docker per VM instead
   of Modal; one VM per case and stage, as upstream).
 - **Harbor side.** Harbor 0.27.0, Docker environment, tasks from this adapter.
@@ -269,7 +270,7 @@ python src/sweeper-bench/scripts/summarize_parity.py --original runs/parity/r1 r
 
 ### Oracle: all tasks
 
-Adapter commit `7074d37`, Harbor 0.27.0, verifier Codex + `gpt-5.6-luna`
+Adapter commit `65d790a`, Harbor 0.27.0, verifier Codex + `gpt-5.6-luna`
 (`xhigh`) through the parity API endpoint, Docker environment:
 
 | Tasks | Reward 1.0 | Notes |
